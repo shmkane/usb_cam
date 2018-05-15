@@ -46,7 +46,8 @@ target_link_libraries(${PROJECT_NAME}
 ## Declare a cpp executable
 add_executable(${PROJECT_NAME}_node
         nodes/cam_one_node.cpp
-        nodes/UsbCamNode.cpp )
+        nodes/UsbCamNode.cpp
+        )
 target_link_libraries(${PROJECT_NAME}_node
   ${PROJECT_NAME}
   ${avcodec_LIBRARIES}

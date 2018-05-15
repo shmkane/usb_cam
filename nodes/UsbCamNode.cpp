@@ -39,16 +39,22 @@
 #include <image_transport/image_transport.h>
 #include <camera_info_manager/camera_info_manager.h>
 #include <std_srvs/Empty.h>
+#include <std_msgs/String.h>
+
 
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
 
 #include "boost/date_time/posix_time/posix_time.hpp"
 
+#include <boost/filesystem.hpp>
+
 namespace usb_cam {
 
     class UsbCamNode {
+
     public:
+
         // private ROS node handle
         ros::NodeHandle node_;
         cv::Mat last;
@@ -57,8 +63,15 @@ namespace usb_cam {
         image_transport::CameraPublisher image_pub_;
 
         // parameters
-        std::string video_device_name_, io_method_name_, pixel_format_name_, camera_name_, camera_info_url_;
-        //std::string start_service_name_, start_service_name_;
+        std::string io_method_name_, pixel_format_name_, camera_name_, camera_info_url_;
+
+        std::string video_location;
+        std::string pic_location;
+        std::string video_device_name_;
+        int cam_number;
+
+
+
         bool streaming_status_;
         int image_width_, image_height_, framerate_, exposure_, brightness_, contrast_, saturation_, sharpness_, focus_,
                 white_balance_, gain_;
@@ -83,14 +96,17 @@ namespace usb_cam {
             return true;
         }
 
-        UsbCamNode() :
-                node_("~") {
+        UsbCamNode() : node_("~") {
             // advertise the main image topic
             image_transport::ImageTransport it(node_);
             image_pub_ = it.advertiseCamera("image_raw", 1);
 
+            node_.param("video_device" , video_device_name_, std::string("/dev/video0"));
+            node_.param("video_location" , video_location, std::string("/home/frankenbox/Pictures/CamTesting/CamX/"));
+            node_.param("pic_location" , pic_location, std::string("/home/frankenbox/Pictures/CamTesting/CamX/Pics/"));
+            node_.param("cam_number" , cam_number, 0);
+
             // grab the parameters
-            node_.param("video_device", video_device_name_, std::string("/dev/video0"));
             node_.param("brightness", brightness_, -1); //0-255, -1 "leave alone"
             node_.param("contrast", contrast_, -1); //0-255, -1 "leave alone"
             node_.param("saturation", saturation_, -1); //0-255, -1 "leave alone"
@@ -99,9 +115,10 @@ namespace usb_cam {
             node_.param("io_method", io_method_name_, std::string("mmap"));
             node_.param("image_width", image_width_, 640);
             node_.param("image_height", image_height_, 480);
-            node_.param("framerate", framerate_, 30);
+            node_.param("framerate", framerate_, 1);
             // possible values: yuyv, uyvy, mjpeg, yuvmono10, rgb24
             node_.param("pixel_format", pixel_format_name_, std::string("mjpeg"));
+
             // enable/disable autofocus
             node_.param("autofocus", autofocus_, false);
             node_.param("focus", focus_, -1); //0-255, -1 "leave alone"
@@ -211,34 +228,43 @@ namespace usb_cam {
             cam_.shutdown();
         }
 
-        bool take_and_save_image(sensor_msgs::Image &a) {
+        bool take_and_save_image(std::string loc) {
             // grab the image
-            cam_.grab_image(&a);
+
+            cam_.grab_image(&img_);
 
             // grab the camera info
             sensor_msgs::CameraInfoPtr ci(new sensor_msgs::CameraInfo(cinfo_->getCameraInfo()));
-            ci->header.frame_id = a.header.frame_id;
-            ci->header.stamp = a.header.stamp;
+            ci->header.frame_id = img_.header.frame_id;
+            ci->header.stamp = img_.header.stamp;
+
+
+            std::string fileName = boost::posix_time::to_iso_extended_string(ci->header.stamp.now().toBoost()) + ".jpg";
+            std::string saveLocation = loc + fileName;
 
             cv_bridge::CvImagePtr cv_ptr;
-            cv_ptr = cv_bridge::toCvCopy(a, sensor_msgs::image_encodings::BGR8);
-
-            std::string fileLocation = "/home/frankenbox/Pictures/CamTesting/";
-            std::string fileName = boost::posix_time::to_iso_extended_string(ci->header.stamp.now().toBoost()) + ".jpg";
-
-            std::string saveLocation = fileLocation + fileName;
-            std::cout << "SAVING FILE: " << saveLocation << std::endl;
+            cv_ptr = cv_bridge::toCvCopy(img_, sensor_msgs::image_encodings::BGR8);
             last = cv_ptr->image;
+
+            if(!boost::filesystem::exists(loc)) {
+                boost::filesystem::create_directories(loc);
+            }
+
+
             imwrite(saveLocation, cv_ptr->image);
+            std::cout << "SAVED FILE: " << saveLocation << std::endl;
 
             return true;
         }
 
-        bool spin(sensor_msgs::Image &a) {
-            ros::Rate loop_rate(10);
-            while (node_.ok()) {
+        bool spin() {
+
+            ros::Rate loop_rate(this->framerate_);
+
+            while (node_.ok())
+            {
                 if (cam_.is_capturing()) {
-                    if (!take_and_save_image(a)) ROS_WARN("USB camera did not respond in time.");
+                    if (!take_and_save_image(video_location)) ROS_WARN("USB camera did not respond in time.");
                 }
                 ros::spinOnce();
                 loop_rate.sleep();
@@ -247,10 +273,9 @@ namespace usb_cam {
             return true;
         }
 
+
+
     };
 
 }
-
-
-
 
