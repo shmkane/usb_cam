@@ -1,0 +1,8 @@
+prefix=/usr/local
+
+Name: usb_cam
+Description: Description of usb_cam
+Version: 0.3.6
+Cflags: -I/usr/local/include
+Libs: -L/usr/local/lib -lusb_cam
+Requires: 

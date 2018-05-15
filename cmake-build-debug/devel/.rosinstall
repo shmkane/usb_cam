@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/frankenbox/ArmCam/src/usb_cam/cmake-build-debug/devel/setup.sh

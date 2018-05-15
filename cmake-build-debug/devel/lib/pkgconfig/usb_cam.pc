@@ -1,0 +1,8 @@
+prefix=/home/frankenbox/ArmCam/src/usb_cam/cmake-build-debug/devel
+
+Name: usb_cam
+Description: Description of usb_cam
+Version: 0.3.6
+Cflags: -I/home/frankenbox/ArmCam/src/usb_cam/include
+Libs: -L/home/frankenbox/ArmCam/src/usb_cam/cmake-build-debug/devel/lib -lusb_cam
+Requires: 
