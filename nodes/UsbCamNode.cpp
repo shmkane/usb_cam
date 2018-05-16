@@ -252,7 +252,7 @@ namespace usb_cam {
 
 
             imwrite(saveLocation, cv_ptr->image);
-            std::cout << "SAVED FILE: " << saveLocation << std::endl;
+            //std::cout << "SAVED FILE: " << saveLocation << std::endl;
 
             return true;
         }
